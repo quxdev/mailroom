@@ -1,0 +1,13 @@
+{% extends 'mailroom/_mailroom.html' %}
+
+{% block customstyle %}
+{{ block.super }}
+<style>
+.brandname {
+  font-size: calc(min(2em, 10vmin));
+  font-family: "Inter", sans-serif;
+  font-weight: 100;
+  line-height: 1;
+}
+</style>
+{% endblock customstyle %}

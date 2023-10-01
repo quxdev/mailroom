@@ -1,0 +1,61 @@
+<form id="mailroom_bulkmail_form"
+      method="post"
+      enctype="multipart/form-data"
+      action="{% url 'mailroom:bulkmail_create' %}">
+  {% csrf_token %}
+
+  <div class="row align-items-center mb-2 mb-md-3">
+    <label for="sender" class="col-md-2 col-form-label">Sender</label>
+    <div class="col-md">
+      <div class="input-group">
+        <input type="text" id="sender" name="sender"
+               class="form-control must-check"
+               value="{{ default_sender }}">
+        <span class="input-group-text">@eninejobs.com</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row align-items-center my-2 my-md-3">
+    <label for="target" class="col-md-2 col-form-label">Recipients</label>
+    <div class="col-md">
+      <input class="form-control" type="file" id="target" name="target">
+    </div>
+  </div>
+
+  <div class="row align-items-center my-md-3">
+    <label for="cc" class="col-md-2 col-form-label">Cc</label>
+    <div class="col-md">
+      <input type="text" id="cc" name="cc" class="form-control">
+    </div>
+  </div>
+
+  <div class="row align-items-center my-2 my-md-3">
+    <label for="bcc" class="col-md-2 col-form-label">Bcc</label>
+    <div class="col-md">
+      <input type="text" id="bcc" name="bcc" class="form-control">
+    </div>
+  </div>
+
+  <div class="row align-items-center my-2 my-md-3">
+    <label for="subject" class="col-md-2 col-form-label">Subject</label>
+    <div class="col-md">
+      <input type="text" id="subject" name="subject" class="form-control">
+    </div>
+  </div>
+
+  <div class="row align-items-start my-2 my-md-3">
+    <label for="message" class="col-md-2 col-form-label">Message</label>
+    <div class="col-md">
+      <textarea type="text" id="message" name="message" class="form-control" rows="12"></textarea>
+    </div>
+  </div>
+
+  <div class="row my-3">
+    <div class="offset-md-2 col-md-10">
+      <div class="d-grid">
+        <button id="submit" type="submit" class="btn btn-primary py-2">Send</button>
+      </div>
+    </div>
+  </div>
+</form>

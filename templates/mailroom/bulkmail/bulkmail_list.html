@@ -1,0 +1,48 @@
+{% extends 'mailroom/bulkmail/_bulkmail.html' %}
+{% load static %}
+
+{% block qux_content %}
+<div class="container-xl my-4">
+  {# Header #}
+  <div class="mb-4">
+    <div class="row align-items-center">
+      <div class="col">
+        <a class="brandname" href="{% url 'mailroom:bulkmail_list' %}">BULK MAIL</a>
+      </div>
+      <div class="col-auto text-end">
+        <a href="{% url 'mailroom:bulkmail_create' %}" class="btn btn-sm btn-primary text-white py-1">
+          <i class="fa-regular fa-fw fa-square-plus"></i> CREATE</a>
+      </div>
+    </div>
+  </div>
+
+  {% if object_list %}
+    <table class="table table-responsive-sm table-hover font-roboto" style="font-size: 13px;">
+      <thead>
+      <tr class="text-uppercase">
+        <th class="px-2">id</th>
+        <th class="px-1">slug</th>
+        <th class="px-1">user</th>
+        <th class="px-1">from</th>
+        <th class="px-1 text-center">targets</th>
+        <th class="px-1">subject</th>
+        <th class="px-1">sent</th>
+      </tr>
+      </thead>
+      <tbody>
+      {% for object in object_list %}
+        <tr>
+          <td class="px-2"><a href="{% url 'admin:mailroom_bulkmail_change' object.id %}">{{ object.id }}</a></td>
+           <td class="px-1">{{ object.slug }}</td>
+          <td class="px-1">{{ object.user }}</td>
+          <td class="px-1">{{ object.sender }}</td>
+          <td class="px-1 text-center">{{ object.target_count }}</td>
+          <td class="px-1">{{ object.subject }}</td>
+          <td class="px-1">{{ object.sent|date:"Y-m-d H:i:s" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</div>
+{% endblock %}
