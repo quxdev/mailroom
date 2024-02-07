@@ -4,14 +4,18 @@ Mailroom is a database and frontend to AWS SES. The first app from Mailroom allo
 
 ## Requirements
 
-Packages
-- django>=4.1.0
-- redis
-- celery
-
 Submodules
 - [Qux](https://github.com/quxdev/qux/)
-- [QWS](https://github.com/quxdev/qws/)
+- [Mailroom](https://github.com/quxdev/mailroom/)
+
+## Bulk Mail Import File
+
+```csv
+email,first_name,last_name
+luke@starwars.com,Luke,Skywalker
+leia@starwars.com,Leia,Organa
+maverick@topgun.org,Pete,Mitchell
+```
 
 ## Quick Start
 
@@ -44,24 +48,6 @@ Submodules
     # Create a block with that name if you are using your own
     # template inheritance
     MAILROOM_BASE_TEMPLATE = "_blank.html"
-
-    # QWS - Default values for from, cc, and bcc
-    MAIL_FROM = os.getenv("MAIL_SENDER", None)
-    MAIL_CC = None
-    MAIL_BCC = None
-
-    # REDIS
-    REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-    REDIS_PORT = os.getenv("REDIS_PORT", 6379)
-    REDIS_DB = os.getenv("REDIS_DB", 0)
-
-    # Celery
-    BROKER_URL = "redis://localhost:6379"
-    CELERY_RESULT_BACKEND = "redis://localhost:6379"
-    CELERY_ACCEPT_CONTENT = ["application/json"]
-    CELERY_TASK_SERIALIZER = "json"
-    CELERY_RESULT_SERIALIZER = "json"
-    CELERY_CREATE_MISSING_QUEUES = True
     ```
 
 4. Include the mailroom URLconf in your project urls.py like this:

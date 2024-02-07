@@ -3,6 +3,7 @@ from django.contrib import admin
 from .models import Contact, Message, BulkMail
 
 
+@admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
     fields = (
         "id",
@@ -24,9 +25,7 @@ class ContactAdmin(admin.ModelAdmin):
     list_display = fields
 
 
-admin.site.register(Contact, ContactAdmin)
-
-
+@admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
     list_display = (
         "id",
@@ -56,39 +55,40 @@ class MessageAdmin(admin.ModelAdmin):
                 "message",
                 "sent",
             ]
-        else:
-            return [
-                "id",
-                "slug",
-                "user",
-                "sender",
-                "to",
-                "cc",
-                "bcc",
-                "subject",
-                "message",
-                "sent",
-            ]
+
+        return [
+            "id",
+            "slug",
+            "user",
+            "sender",
+            "to",
+            "cc",
+            "bcc",
+            "subject",
+            "message",
+            "sent",
+        ]
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
             return self.get_fields(request, obj)
-        else:
-            return ["id", "slug", "user", "sent"]
 
-    def _to(self, obj):
+        return ["id", "slug", "user", "sent"]
+
+    @staticmethod
+    def _to(obj):
         return obj.emailstr("to")
 
-    def _cc(self, obj):
+    @staticmethod
+    def _cc(obj):
         return obj.emailstr("cc")
 
-    def _bcc(self, obj):
+    @staticmethod
+    def _bcc(obj):
         return obj.emailstr("bcc")
 
 
-admin.site.register(Message, MessageAdmin)
-
-
+@admin.register(BulkMail)
 class BulkMailAdmin(admin.ModelAdmin):
     fields = (
         "id",
@@ -116,9 +116,5 @@ class BulkMailAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         if obj:
             return self.fields
-        else:
-            return ["id", "slug", "user", "sent"]
 
-
-
-admin.site.register(BulkMail, BulkMailAdmin)
+        return ["id", "slug", "user", "sent"]

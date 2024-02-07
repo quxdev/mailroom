@@ -1,17 +1,18 @@
 import csv
 import datetime
+import threading
 
-from celery import shared_task
+from celery.app import shared_task
 from django.contrib.auth.models import User
+from django.core.mail import EmailMessage
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from qux.models import CoreModel, default_null_blank
-from qws.qses.mail import AWSEmail
+from qux.models import QuxModel, default_null_blank
 
 
-class Mailroom(CoreModel):
+class Mailroom(QuxModel):
     SLUG_ALLOWED_CHARS = "abcdefghijklmnopqrstuvwxyz"
 
     slug = models.CharField(max_length=16, unique=True)
@@ -20,10 +21,6 @@ class Mailroom(CoreModel):
     class Meta:
         app_label = "mailroom"
         abstract = True
-
-
-# TO DO
-# Store every from, to, cc, and bcc as ManyToMany to a contact model
 
 
 class Contact(Mailroom):
@@ -45,10 +42,10 @@ class Contact(Mailroom):
         db_table = "mailroom_contact"
 
     def __str__(self):
-        return self.email
+        return str(self.email)
 
     def __repr__(self):
-        return self.email
+        return str(self.email)
 
 
 @receiver(post_save, sender=Contact)
@@ -89,57 +86,42 @@ class Message(Mailroom):
         if header not in ["to", "cc", "bcc"]:
             return
         if getattr(self, header).exists():
-            return ",".join(
-                [contact.email for contact in getattr(self, header).all() if contact]
-            )
-        else:
+            contact_list = [contact.email for contact in getattr(self, header).all()]
+            return ",".join(contact_list)
+
+        return
+
+    def set_recipients(self, header, value):
+        if header not in ["to", "cc", "bcc"]:
             return
 
+        if value:
+            contact_list = []
+            for e in value.split(","):
+                c = Contact.objects.get_or_none(email=e.lower())
+                if c is None:
+                    c = Contact.objects.create(user=self.user, email=e.lower())
+                if c not in contact_list:
+                    contact_list.append(c)
+            getattr(self, header).set(contact_list)
+
     @classmethod
-    def draft(cls, user, sender, to, cc, bcc, subject, message):
-        obj = cls.objects.create(
-            user=user
-        )
-        contact = Contact.objects.get_or_none(email=sender.lower())
+    def draft(cls, **kwargs):
+        user = kwargs["user"]
+        sender = kwargs["sender"].lower()
+
+        obj = cls.objects.create(user=user)
+        contact = Contact.objects.get_or_none(email=sender)
         if contact is None:
-            contact = Contact.objects.create(
-                user=user,
-                email=sender.lower()
-            )
+            contact = Contact.objects.create(user=user, email=sender)
         obj.sender = contact
 
-        if to:
-            clist = []
-            for e in to.split(","):
-                c = Contact.objects.get_or_none(email=e.lower())
-                if c is None:
-                    c = Contact.objects.create(user=user, email=e.lower())
-                if c not in clist:
-                    clist.append(c)
-            obj.to.set(clist)
+        obj.set_recipients("to", kwargs["to"])
+        obj.set_recipients("cc", kwargs["cc"])
+        obj.set_recipients("bcc", kwargs["bcc"])
 
-        if cc:
-            clist = []
-            for e in cc.split(","):
-                c = Contact.objects.get_or_none(email=e.lower())
-                if c is None:
-                    c = Contact.objects.create(user=user, email=e.lower())
-                if c not in clist:
-                    clist.append(c)
-            obj.cc.set(clist)
-
-        if bcc:
-            clist = []
-            for e in bcc.split(","):
-                c = Contact.objects.get_or_none(email=e.lower())
-                if c is None:
-                    c = Contact.objects.create(user=user, email=e.lower())
-                if c not in clist:
-                    clist.append(c)
-            obj.bcc.set(clist)
-
-        obj.subject = subject
-        obj.message = message
+        obj.subject = kwargs["subject"]
+        obj.message = kwargs["message"]
 
         return obj
 
@@ -153,20 +135,21 @@ class Message(Mailroom):
         if isinstance(self.sent, datetime.datetime):
             return True
 
-        service = AWSEmail()
-        service.sender = self.sender.email
-        service.to = self.emailstr("to")
-        service.cc = self.emailstr("cc")
-        service.bcc = self.emailstr("bcc")
-        service.subject = self.subject
-        service.message = self.message
+        packet = {
+            "subject": self.subject,
+            "body": self.message,
+            "from_email": self.sender.email,
+            "to": [self.emailstr("to")],
+            "cc": [self.emailstr("cc")],
+            "bcc": [self.emailstr("bcc"), "vishal+mailroom@enine.dev"],
+            "reply_to": [self.sender.email],
+        }
 
-        _, response = service.send()
+        email_message = EmailMessage(**packet)
+        email_message.send(fail_silently=True)
 
-        self.is_sent = response["ResponseMetadata"]["HTTPStatusCode"] == 200
-        self.save()
-
-        return self.is_sent
+        # This is an alternative to send email in a separate thread
+        # EmailThread(packet).start()
 
 
 def mailroom_bulkmail_target_filepath(instance, filename):
@@ -210,23 +193,28 @@ class BulkMail(Mailroom):
                             user=self.user,
                             email=email.lower(),
                         )
+
                         model_fields = ["firstname", "lastname"]
-                        [setattr(contact, k, row[k]) for k in model_fields if k in row]
+                        for k in model_fields:
+                            if k in row:
+                                setattr(contact, k, row[k])
                         contact.save()
+
                 if contact not in contacts:
                     contacts.append(contact)
 
         # Create messages
         for to in contacts:
-            message = Message.draft(
-                user=self.user,
-                sender=sender_email,
-                to=to.email,
-                cc=self.cc,
-                bcc=self.bcc,
-                subject=self.subject,
-                message=self.message.format(**to.__dict__),
-            )
+            message_params = {
+                "user": self.user,
+                "sender": sender_email,
+                "to": to.email,
+                "cc": self.cc,
+                "bcc": self.bcc,
+                "subject": self.subject,
+                "message": self.message.format(**to.__dict__),
+            }
+            message = Message.draft(**message_params)
 
             message.ref_model = "mailroom.bulkmail"
             message.ref_slug = self.slug
@@ -239,10 +227,24 @@ class BulkMail(Mailroom):
             ref_model="mailroom.bulkmail",
             ref_slug=self.slug,
         )
+
+        # Asynchronous (for queued)
         [task_message_send.delay(message.slug) for message in queryset]
+
+        # Synchronous
+        # [message.send() for message in queryset]
 
         self.sent = datetime.datetime.now()
         self.save()
+
+
+class EmailThread(threading.Thread):
+    def __init__(self, params):
+        self.email_message = EmailMessage(**params)
+        threading.Thread.__init__(self)
+
+    def run(self):
+        self.email_message.send()
 
 
 @shared_task
@@ -250,3 +252,5 @@ def task_message_send(slug):
     message = Message.objects.get_or_none(slug=slug)
     if message:
         message.send()
+        message.is_sent = True
+        message.save()

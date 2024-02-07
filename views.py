@@ -1,3 +1,6 @@
+import datetime
+
+from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.shortcuts import redirect
 from django.views.generic import ListView
@@ -21,7 +24,7 @@ class BulkMailList(UserPassesTestMixin, ListView):
         if self.request.user.is_superuser:
             queryset = BulkMail.objects.all()
         else:
-            queryset = queryset = BulkMail.objects.filter(user=self.request.user)
+            queryset = BulkMail.objects.filter(user=self.request.user)
         return queryset
 
 
@@ -29,7 +32,7 @@ class CreateBulkMail(UserPassesTestMixin, TemplateView):
     template_name = "mailroom/bulkmail/bulkmail_create.html"
     form = BulkMailForm
     extra_context = {
-        "default_sender": "noreply"
+        "default_sender": "noreply",
     }
 
     def test_func(self):
@@ -52,5 +55,8 @@ class CreateBulkMail(UserPassesTestMixin, TemplateView):
             obj.explode()
 
             return redirect("mailroom:bulkmail_list")
-        else:
-            return redirect("mailroom:bulkmail_create")
+
+        if settings.DEBUG and form.errors:
+            print(form.errors)
+
+        return redirect("mailroom:bulkmail_create")

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import *
+from .views import BulkMailList, CreateBulkMail
 
 app_name = "mailroom"
 
