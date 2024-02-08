@@ -186,6 +186,8 @@ class BulkMail(Mailroom):
                 # Get contact if email found else create
                 # Do not overwrite existing contact
                 email = row.get("email", None)
+                contact = None
+
                 if email:
                     contact = Contact.objects.get_or_none(email=email)
                     if contact is None:
@@ -200,7 +202,7 @@ class BulkMail(Mailroom):
                                 setattr(contact, k, row[k])
                         contact.save()
 
-                if contact not in contacts:
+                if contact and contact not in contacts:
                     contacts.append(contact)
 
         # Create messages
