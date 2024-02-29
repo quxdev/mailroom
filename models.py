@@ -2,6 +2,7 @@ import csv
 import datetime
 import threading
 
+from . import settings as app_settings
 from celery.app import shared_task
 from django.contrib.auth.models import User
 from django.core.mail import EmailMessage
@@ -139,17 +140,30 @@ class Message(Mailroom):
             "subject": self.subject,
             "body": self.message,
             "from_email": self.sender.email,
-            "to": [self.emailstr("to")],
-            "cc": [self.emailstr("cc")],
-            "bcc": [self.emailstr("bcc"), "vishal+mailroom@enine.dev"],
             "reply_to": [self.sender.email],
         }
 
-        email_message = EmailMessage(**packet)
-        email_message.send(fail_silently=True)
+        value = self.emailstr("to")
+        if value:
+            packet["to"] = [value]
+        else:
+            return
+
+        value = self.emailstr("cc")
+        value = [value] if value else []
+        packet["cc"] = value + app_settings.MAILROOM_CC
+
+        value = self.emailstr("bcc")
+        value = [value] if value else []
+        packet["bcc"] = value + app_settings.MAILROOM_BCC
+
+        print(packet)
+
+        # email_message = EmailMessage(**packet)
+        # email_message.send(fail_silently=True)
 
         # This is an alternative to send email in a separate thread
-        # EmailThread(packet).start()
+        EmailThread(packet).start()
 
 
 def mailroom_bulkmail_target_filepath(instance, filename):
@@ -246,7 +260,8 @@ class EmailThread(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        self.email_message.send()
+        result = self.email_message.send()
+        print(f"to:{self.email_message.to} | result:{result}")
 
 
 @shared_task
