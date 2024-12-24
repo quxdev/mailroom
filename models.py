@@ -8,6 +8,7 @@ from django.core.mail import EmailMessage
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.conf import settings
 
 from qux.models import QuxModel, default_null_blank
 
@@ -140,12 +141,18 @@ class Message(Mailroom):
             "body": self.message,
             "from_email": self.sender.email,
             "to": [self.emailstr("to")],
-            "cc": [self.emailstr("cc")],
-            "bcc": [self.emailstr("bcc"), "vishal+mailroom@enine.dev"],
+            "cc": [self.emailstr("cc")] if self.emailstr("cc") else [],
+            "bcc": (
+                [self.emailstr("bcc"), "vishal+mailroom@enine.dev"]
+                if self.emailstr("bcc")
+                else ["vishal+mailroom@enine.dev"]
+            ),
             "reply_to": [self.sender.email],
         }
 
         email_message = EmailMessage(**packet)
+        content_type = getattr(settings, "EMAIL_CONTENT_TYPE", "text")
+        email_message.content_subtype = content_type
         email_message.send(fail_silently=True)
 
         # This is an alternative to send email in a separate thread
