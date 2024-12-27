@@ -7,6 +7,7 @@ from celery.app import shared_task
 from django.contrib.auth.models import User
 from django.core.mail import EmailMessage
 from django.db import models
+from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -163,7 +164,9 @@ class Message(Mailroom):
         # email_message.send(fail_silently=True)
 
         # This is an alternative to send email in a separate thread
-        EmailThread(packet).start()
+        email_thread = EmailThread(packet)
+        email_thread.email_message.content_subtype = settings.EMAIL_CONTENT_TYPE
+        email_thread.start()
 
 
 def mailroom_bulkmail_target_filepath(instance, filename):
