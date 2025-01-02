@@ -36,6 +36,7 @@ maverick@topgun.org,Pete,Mitchell
     INSTALLED_APPS = (
         ...
         'mailroom',
+        ...
     )
     ```
 
@@ -48,6 +49,9 @@ maverick@topgun.org,Pete,Mitchell
     # Create a block with that name if you are using your own
     # template inheritance
     MAILROOM_BASE_TEMPLATE = "_blank.html"
+    MAILROOM_CONTENT_SUBTYPE = "plain"
+    MAILROOM_CC = ["postmaster@qux.dev"]
+    MAILROOM_BCC = ["postoffice@qux.dev"]
     ```
 
 4. Include the mailroom URLconf in your project urls.py like this:

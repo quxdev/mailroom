@@ -3,6 +3,7 @@ import datetime
 import threading
 
 from celery.app import shared_task
+from django.conf import settings as app_settings
 from django.contrib.auth.models import User
 from django.core.mail import EmailMessage
 from django.db import models
@@ -139,17 +140,35 @@ class Message(Mailroom):
             "subject": self.subject,
             "body": self.message,
             "from_email": self.sender.email,
-            "to": [self.emailstr("to")],
-            "cc": [self.emailstr("cc")],
-            "bcc": [self.emailstr("bcc"), "vishal+mailroom@enine.dev"],
             "reply_to": [self.sender.email],
         }
 
-        email_message = EmailMessage(**packet)
-        email_message.send(fail_silently=True)
+        target_value = self.emailstr("to")
+        if target_value:
+            packet["to"] = [target_value]
+        else:
+            # No To, no email
+            return
+
+        target_value = self.emailstr("cc")
+        target_value = [target_value] if target_value else []
+        target_value += getattr(app_settings, "MAILROOM_CC", [])
+        packet["cc"] = target_value
+
+        target_value = self.emailstr("bcc")
+        target_value = [target_value] if target_value else []
+        target_value += getattr(app_settings, "MAILROOM_BCC", [])
+        packet["bcc"] = target_value
+
+        # email_message = EmailMessage(**packet)
+        # email_message.send(fail_silently=True)
 
         # This is an alternative to send email in a separate thread
-        # EmailThread(packet).start()
+        email = EmailThread(packet)
+        email.email_message.content_subtype = getattr(
+            app_settings, "MAILROOM_CONTENT_SUBTYPE", "plain"
+        )
+        email.start()
 
 
 def mailroom_bulkmail_target_filepath(instance, filename):
@@ -186,6 +205,8 @@ class BulkMail(Mailroom):
                 # Get contact if email found else create
                 # Do not overwrite existing contact
                 email = row.get("email", None)
+                contact = None
+
                 if email:
                     contact = Contact.objects.get_or_none(email=email)
                     if contact is None:
@@ -200,7 +221,7 @@ class BulkMail(Mailroom):
                                 setattr(contact, k, row[k])
                         contact.save()
 
-                if contact not in contacts:
+                if contact and contact not in contacts:
                     contacts.append(contact)
 
         # Create messages
