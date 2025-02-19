@@ -91,6 +91,17 @@ class Message(Mailroom):
             return ",".join(contact_list)
 
         return
+    
+    def email_list(self, header=None):
+        if header is None:
+            return
+        if header not in ["to", "cc", "bcc"]:
+            return
+        if getattr(self, header).exists():
+            contact_list = [contact.email for contact in getattr(self, header).all()]
+            return contact_list
+
+        return
 
     def set_recipients(self, header, value):
         if header not in ["to", "cc", "bcc"]:
@@ -143,20 +154,20 @@ class Message(Mailroom):
             "reply_to": [self.sender.email],
         }
 
-        target_value = self.emailstr("to")
+        target_value = self.email_list("to")
         if target_value:
-            packet["to"] = [target_value]
+            packet["to"] = target_value
         else:
             # No To, no email
             return
 
-        target_value = self.emailstr("cc")
-        target_value = [target_value] if target_value else []
+        target_value = self.email_list("cc")
+        target_value = target_value if target_value else []
         target_value += getattr(app_settings, "MAILROOM_CC", [])
         packet["cc"] = target_value
 
-        target_value = self.emailstr("bcc")
-        target_value = [target_value] if target_value else []
+        target_value = self.email_list("bcc")
+        target_value = target_value if target_value else []
         target_value += getattr(app_settings, "MAILROOM_BCC", [])
         packet["bcc"] = target_value
 
